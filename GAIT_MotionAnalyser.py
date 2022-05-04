@@ -4,8 +4,8 @@
 #___________________________________________________
 # Tool = "Postura"
 # HandcraftedBy : "__"
-# Version = "1.0"
-# LastModifiedOn : "13th Mar 2022"
+# Version = "1.1"
+# LastModifiedOn : "5th April 2022"
 #___________________________________________________
 
 from multiprocessing import Queue
