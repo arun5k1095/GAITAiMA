@@ -1,27 +1,18 @@
-# -*- coding: utf-8 -*-
-
-
-#___________________________________________________
-# Tool = "Postura"
-# HandcraftedBy : "__"
-# Version = "1.1"
-# LastModifiedOn : "5th April 2022"
-#___________________________________________________
-
 from multiprocessing import Queue
 from threading import*
 import re
 import json,requests
+from PIL import Image, ImageQt
 import urllib.request
 from PyQt5.QtGui import QPixmap,QFont
 from PyQt5.QtWidgets import QApplication,QWidget,QSplashScreen,\
     QStackedLayout,QFrame,QFormLayout,QLineEdit,QPushButton,QLabel,QComboBox,QDateEdit,QMessageBox,QErrorMessage,\
-    QMainWindow,QMenuBar,QGridLayout,QFileDialog
+    QMainWindow,QMenuBar,QGridLayout,QFileDialog,QVBoxLayout,QHBoxLayout
 from PyQt5.QtCore import Qt,QTimer
 from PyQt5 import QtGui
+from PyQt5.QtGui import QImage, QPixmap
 from qtwidgets import PasswordEdit
 from FaultCodes import FaultCodes
-from threading import*
 import os
 import sys
 import time
@@ -32,6 +23,315 @@ import time
 import webbrowser
 from datetime import datetime
 import Resources
+
+import cv2
+import mediapipe as mp
+import numpy as np
+import matplotlib.pyplot as plt
+import pprint
+
+
+PARAMETERS_DICT = {
+
+    'Step_length' : [0] ,
+    'SST_Right' : 0,
+    'SST_Left' : 0,
+    'DST' : 0,
+    'STANCE' : 0,
+    'SWING': 0,
+    'L_Velocity' : [0],
+    'R_Velocity' : [0],
+    'CADENCE': 0,
+    'Lstep_duration':[] ,
+    'Rstep_duration' :[] ,
+    'Lstride_duration':[] ,
+    'Rstride_duration': [],
+    'Lstride_length': [],
+    'Rstride_length':[]
+
+}
+
+
+
+def GET_ALL_PARAMETERS(VideoFilepath):
+
+    global PARAMETERS_DICT , VideoFeedFrame
+    PARAMETERS_DICT["Step_length"] = [0]
+    PARAMETERS_DICT["R_Velocity"] = [0]
+    ClearPatientGraphs()
+
+    mpDraw = mp.solutions.drawing_utils
+    mpPose = mp.solutions.pose
+    pose = mpPose.Pose(enable_segmentation=True,model_complexity=2)
+    cap = cv2.VideoCapture(VideoFilepath)
+
+    filename = VideoFilepath.split('/')[-1]
+
+    # 185cms is the person height, 10cms is the height from eye to tip of head 
+    PERSON_HEIGHT = float(160)
+    PERSON_HEIGHT-=10
+
+    print('Working on : '+filename)
+    print()
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    duration = frame_count/fps
+    cnt = duration/frame_count
+    width = int(cap. get(cv2. CAP_PROP_FRAME_WIDTH ))
+    height = int(cap. get(cv2. CAP_PROP_FRAME_HEIGHT))
+
+    L_ANS_ARRAY = []
+    R_ANS_ARRAY = []
+    STEP_LENGTH_ARRAY = []
+
+    LCOUNT=0
+    RCOUNT=0
+
+    cadence = 0
+    SWING=0
+    swing_count=0
+    sst_right_count=0
+    sst_left_count=0
+    dst_count=0
+
+    frame_number=0
+    prev_frame_number=0
+
+    step_count=0
+    height_eyetofoot=0
+
+    left_previous = 0
+    right_previous = 0
+
+    initial_left_frame = 0
+    initial_right_frame = 0
+    final_left_frame=0
+    final_right_frame=0
+
+    right_prev_step=0
+    left_prev_step=0
+
+    R_stride_length_incms=0
+    L_stride_length_incms=0
+
+    prev_step_frame=0
+
+    init_pos_left_ankle = 0
+    init_pos_right_ankle = 0
+
+
+
+
+    while True:
+        success, img = cap.read()
+        frame_number+=1
+        if not success:
+            break
+        imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        results = pose.process(imgRGB)
+        if results.pose_landmarks:
+            mpDraw.draw_landmarks(img, results.pose_landmarks, mpPose.POSE_CONNECTIONS)
+            h, w, c = img.shape
+            rightheel = results.pose_landmarks.landmark[30]
+            leftheel = results.pose_landmarks.landmark[29].x*w
+            right_eye_outer =  results.pose_landmarks.landmark[6]
+            left_prev_step=leftheel
+            right_prev_step=rightheel.x*w
+            height_eyetofoot = abs(rightheel.y-right_eye_outer.y)*h
+            init_pos_left_ankle = int(leftheel)
+            init_pos_right_ankle = int(rightheel.x*w)
+
+            break
+
+
+    while True:
+        success, img = cap.read()
+        frame_number+=1
+        if not success:
+            break
+        imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        results = pose.process(imgRGB)
+        if results.pose_landmarks:
+            mpDraw.draw_landmarks(img, results.pose_landmarks, mpPose.POSE_CONNECTIONS)
+            h, w, c = img.shape
+            rightheel = int(results.pose_landmarks.landmark[30].x*w)
+            leftheel = int(results.pose_landmarks.landmark[29].x*w)
+            step_length = abs(rightheel-leftheel)
+            step_length_incms = round((step_length*PERSON_HEIGHT)/height_eyetofoot,2)
+                
+            RDIFF = int(rightheel-right_previous)
+            LDIFF = int(leftheel-left_previous )
+
+            #img1 = cv2.resize(img, (480, 640))
+            bytesPerLine = c * w
+            mpDraw.draw_landmarks(imgRGB, results.pose_landmarks, mpPose.POSE_CONNECTIONS)
+            convertToQtFormat = QImage(imgRGB.data, w, h, bytesPerLine, QImage.Format_RGB888)
+            p = convertToQtFormat.scaled(640, 480, Qt.KeepAspectRatio)
+            VideoFeedFrame.setPixmap(QtGui.QPixmap.fromImage(p))
+            UpdatePatientGraphs()
+            VideoFeedFrame.update()
+
+
+
+            if LDIFF<=0.5:
+                sst_left_count+=1
+                
+            if RDIFF<=0.5:
+                sst_right_count+=1
+
+            if LDIFF<=1 and RDIFF<=1:
+                dst_count+=1
+
+            SSTRIGHT = round(sst_right_count*cnt,2)
+            SSTLEFT = round(sst_left_count*cnt,2)
+            DST = round(dst_count*cnt,2)
+            STANCE=max(SSTRIGHT,SSTLEFT)
+
+            PARAMETERS_DICT['SST_Right']=SSTRIGHT
+            PARAMETERS_DICT['SST_Left']=SSTLEFT
+            PARAMETERS_DICT['DST']=DST
+            PARAMETERS_DICT['STANCE']=STANCE
+
+
+            right_step_length=abs(rightheel - init_pos_right_ankle)
+            right_step_length_incms = round((right_step_length*PERSON_HEIGHT)/height_eyetofoot,2)
+            right_velocity = right_step_length_incms/(frame_number*duration/frame_count)
+            right_velocity = round(right_velocity/100,2)
+
+            left_step_length=abs(leftheel - init_pos_left_ankle)
+            left_step_length_incms = round((left_step_length*PERSON_HEIGHT)/height_eyetofoot,2)
+            left_velocity = left_step_length_incms/(frame_number*duration/frame_count)
+            left_velocity = round(left_velocity/100,2)
+
+
+
+            if LDIFF>1 or RDIFF>1:
+                swing_count+=1  
+
+            if LDIFF==0 and frame_number-initial_left_frame>10 and leftheel-left_prev_step>20:
+                LCOUNT+=1
+            
+                LSTRIDE_DURATION = round((frame_number-initial_left_frame)*cnt,2)
+                print('LSTRIDE_DURATION : '+str(LSTRIDE_DURATION)+'s',end=" && ")
+                
+                LSTEP_DURATION = round((frame_number-prev_step_frame)*cnt,2)
+                print('LSTEP_DURATION : '+str(LSTEP_DURATION)+'s')
+                
+                PARAMETERS_DICT['Lstep_duration'].append(LSTEP_DURATION)
+                PARAMETERS_DICT['Lstride_duration'].append(LSTRIDE_DURATION)
+
+                prev_step_frame=frame_number
+
+                initial_left_frame=frame_number
+            
+                L_stride_length = abs(leftheel-left_prev_step)    
+                left_prev_step=leftheel    
+
+                L_stride_length_incms = round((L_stride_length*PERSON_HEIGHT)/height_eyetofoot,2)
+                L_ANS_ARRAY.append(L_stride_length_incms)
+
+                PARAMETERS_DICT['Lstride_length']=L_ANS_ARRAY
+
+                PARAMETERS_DICT['L_Velocity'].append(left_velocity)
+
+
+                if step_length_incms>10:
+                    STEP_LENGTH_ARRAY.append(step_length_incms)
+                    PARAMETERS_DICT['Step_length']=STEP_LENGTH_ARRAY
+
+                # print(L_stride_length_incms)
+            left_previous=leftheel  
+
+            if RDIFF==0 and frame_number-initial_right_frame>10 and rightheel-right_prev_step>20:
+                RCOUNT+=1
+            
+                RSTRIDE_DURATION = round((frame_number-initial_right_frame)*cnt,2)
+                print('RSTRIDE_DURATION : '+str(RSTRIDE_DURATION)+'s',end=" && ")
+
+                RSTEP_DURATION = round((frame_number-prev_step_frame)*cnt,2)
+                print('RSTEP_DURATION : '+str(RSTEP_DURATION)+'s')
+                
+                PARAMETERS_DICT['Rstride_duration'].append(RSTRIDE_DURATION)
+                PARAMETERS_DICT['Rstep_duration' ].append(RSTEP_DURATION)
+
+
+                prev_step_frame=frame_number
+
+                initial_right_frame=frame_number
+            
+                R_stride_length = abs(rightheel-right_prev_step)
+                right_prev_step=rightheel
+
+                R_stride_length_incms = round((R_stride_length*PERSON_HEIGHT)/height_eyetofoot,2)
+                R_ANS_ARRAY.append(R_stride_length_incms)
+
+                PARAMETERS_DICT['Rstride_length']=R_ANS_ARRAY
+                PARAMETERS_DICT['R_Velocity'].append(right_velocity)
+                if step_length_incms>10:
+                    STEP_LENGTH_ARRAY.append(step_length_incms)
+                    PARAMETERS_DICT['Step_length']=STEP_LENGTH_ARRAY
+
+                # print(R_stride_length_incms)
+            right_previous=rightheel
+
+            step_count=LCOUNT+RCOUNT
+
+
+        cadence = int(((step_count)*60)/duration)
+        SWING = round(swing_count*cnt,2)
+
+        PARAMETERS_DICT['SWING']=SWING
+        PARAMETERS_DICT['CADENCE']=cadence
+
+
+        # cv2.putText(img, 'STEPS: ' + str(round(step_count)), (70, 50), cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 0, 0), 3)
+        # cv2.putText(img, 'CADENCE: ' + str(cadence)+str('steps/min'), (70, 100), cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 0, 0), 3)
+        # cv2.putText(img, 'STEP LENGTH: ' + str(step_length_incms), (70, 150), cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 0, 0), 3)
+        # cv2.putText(img, 'L Velocity:'+ str(left_velocity)+'m/s', (570, 100), cv2.FONT_HERSHEY_PLAIN, 2,(255, 0, 0), 3)   
+        # cv2.putText(img, 'R Velocity:'+ str(right_velocity)+'m/s', (570, 50), cv2.FONT_HERSHEY_PLAIN, 2,(255, 0, 0), 3)   
+        # cv2.putText(img, 'Swing : '+str(SWING) +str('s'), (570, 150), cv2.FONT_HERSHEY_PLAIN, 2,(255, 0, 0), 3)    
+        # cv2.putText(img, 'SST Right : '+str(SSTRIGHT) +str('s'), (570, 200), cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 0, 0), 3)
+        # cv2.putText(img, 'SST Left : '+str(SSTLEFT) +str('s'), (570, 250), cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 0, 0), 3)
+        # cv2.putText(img, 'DST : '+str(DST) +str('s'), (570, 350), cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 0, 0), 3)
+        # cv2.putText(img, 'STANCE : '+str(STANCE) +str('s'), (570, 300), cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 0, 0), 3)
+
+
+        # result.write(img)
+        img = cv2.resize(img, (1200,600))
+        #cv2.imshow("Image", img)
+        cv2.waitKey(1)
+
+    # plt.plot(STEP_LENGTH_ARRAY)
+    # plt.savefig('../plots/StepLength '+filename.split('.')[0] +'.png')    
+    # plt.show()
+
+    L_AVERAGE_STRIDE_LENGTH = round(sum(L_ANS_ARRAY)/len(L_ANS_ARRAY),2)
+    R_AVERAGE_STRIDE_LENGTH = round(sum(R_ANS_ARRAY)/len(R_ANS_ARRAY),2)
+    AVERAGE_STEP_LENGTH = round(sum(STEP_LENGTH_ARRAY)/len(STEP_LENGTH_ARRAY),2)
+
+    print('Duration : '+str(duration))
+    # print('step_count : '+str(step_count))
+    # print('cadence : '+str(cadence))
+    print('L_AVERAGE_STRIDE_LENGTH : '+str(L_AVERAGE_STRIDE_LENGTH))
+    print('R_AVERAGE_STRIDE_LENGTH : '+str(R_AVERAGE_STRIDE_LENGTH))
+    print('AVERAGE_STEP_LENGTH : '+str(AVERAGE_STEP_LENGTH))
+    # print('Left Velocity : '+str(left_velocity)+'m/s')
+    # print('Right Velocity : '+str(right_velocity)+'m/s')
+    # print('Swing : '+str(SWING) +' s')
+    # print('SST Right : '+str(SSTRIGHT))
+    # print('SST Left : '+str(SSTLEFT))
+    # print('DST : '+str(DST))
+    # print('STANCE : '+str(STANCE))
+
+
+
+    pprint.pprint(PARAMETERS_DICT)
+
+
+    cap.release()
+    # result.release()
+    cv2.destroyAllWindows()
+    return PARAMETERS_DICT
 
 
 def UserRegistratiion(data):
@@ -126,14 +426,16 @@ def showUserInfo(message):
    if returnValue == QMessageBox.Ok: pass
    else: pass
 
-try:
+if 1:
+#try:
     if __name__ == "__main__":
 
         def Authenticate_Login():
             UserID = UserIDInput.text().upper().strip()
             UserPswd = UserPassword.text().strip()
 
-            if UserID == "ADMIN" and UserPswd == "admin123":
+            #if UserID == "ADMIN" and UserPswd == "admin123":
+            if 1:
                 Switch_Screenpage(2)
             else : error_dialog.showMessage("Invalid Credentials , Please re-try")
 
@@ -141,7 +443,7 @@ try:
         Aplication = QApplication(sys.argv)
         MainWindowGUI = QWidget()
         #MainWindowGUI.setFixedSize(1600, 800)
-        MainWindowGUI.setWindowTitle('GAIT AiMA')
+        MainWindowGUI.setWindowTitle('Postura')
         MainWindowGUI.setStyleSheet("background-color: black;")
         MainWindowGUI.setObjectName("MainMenu");
         IconFilepath = ":/resources/AI_Volved.ico"
@@ -323,6 +625,7 @@ try:
         error_dialog = QErrorMessage(MainWindowGUI)
 
         def Call_UserRegistration():
+
             try:
                 UserData = {
                     "UserID": str(UserID.text()).strip().upper(),
@@ -433,9 +736,94 @@ try:
         grid_layout.addWidget(Frm_H_Right_LoggedInPage_Dr, 0, 1)
 
         stackedLayout_Frm_H_Right_LoggedInPage_Dr = QStackedLayout(Frm_H_Right_LoggedInPage_Dr)
+
+        import pyqtgraph as pg
+
+
+
         ClinicalDiagPage = QFrame()
         PatientRegPage = QFrame()
         ReportsAnlysPage = QFrame()
+
+
+
+
+        #ReportsAnlysPage = pg.PlotWidget(ReportsAnlysPage)
+        #my_layout.addWidget(my_plot)
+        #ReportsAnlysPage.plot([5, 7,6,7,8],[5, 5,8,2,8])
+
+        import pyqtgraph as pg
+        import numpy as np
+
+
+        x = []
+        y=  []
+
+        class CustomPlot(pg.PlotWidget):
+            def __init__(self , X_Label , Y_Label):
+                pg.PlotWidget.__init__(self)
+                self.setLabel('left', Y_Label, units='Cm')
+                self.addLegend()
+                self.showGrid(x=True, y=True)
+                # set properties of the label for x axis
+                self.setLabel('bottom', X_Label, units='')
+                self.plot(x,y, pen=None, symbol='o', symbolPen='g', symbolSize=10,title="Test Plot")
+
+
+
+        VideoFeedFrame =  QLabel(ClinicalDiagPage)
+        VideoFeedFrame.setFixedSize(640, 480)
+        VideoFeedFrame.move(80,50)
+
+
+        GraphsFrame = QFrame(ClinicalDiagPage)
+        GraphsFrame.setFixedSize(1500,300)
+        GraphsFrame.move(80,600)
+        layout = QHBoxLayout(GraphsFrame) # create the layout
+
+
+
+        ReportsAnlysPage.pgcustom1 = CustomPlot("Number of Steps","Step Length") # class abstract both the classes
+        ReportsAnlysPage.pgcustom2 = CustomPlot("","") # "" "" ""
+        ReportsAnlysPage.pgcustom3 = CustomPlot("","") # "" "" ""
+        ReportsAnlysPage.pgcustom4 = CustomPlot("","") # "" "" ""
+        layout.addWidget(ReportsAnlysPage.pgcustom1)
+        layout.addWidget(ReportsAnlysPage.pgcustom2)
+        layout.addWidget(ReportsAnlysPage.pgcustom3)
+        layout.addWidget(ReportsAnlysPage.pgcustom4)
+
+        import random
+        count = 0
+
+
+
+        def UpdatePatientGraphs():
+            global x, y , count , ReportsAnlysPage
+            x[:-1] = x[1:]  # shift data in the array one sample left
+            y[:-1] = y[1:]  # shift data in the array one sample left
+            # (see also: np.roll)
+
+            ReportsAnlysPage.pgcustom1.plot(range(1,len(PARAMETERS_DICT['Step_length'])+1),\
+                                                    PARAMETERS_DICT["Step_length"],\
+                                            pen='dodgerblue', symbol='t', symbolPen='g', symbolSize=1)
+            print(PARAMETERS_DICT['R_Velocity'])
+            ReportsAnlysPage.pgcustom2.plot(range(1,len(PARAMETERS_DICT['R_Velocity'])+1),\
+                                            PARAMETERS_DICT['R_Velocity'], \
+                                            pen='dodgerblue', symbol='t', symbolPen='g', symbolSize=1)
+            #ReportsAnlysPage.pgcustom3.plot(x,y, pen='dodgerblue', symbol='t', symbolPen='g', symbolSize=1)
+            #ReportsAnlysPage.pgcustom4.plot(x,y, pen='dodgerblue', symbol='t', symbolPen='g', symbolSize=1)
+
+        timer = pg.QtCore.QTimer()
+        #timer.timeout.connect(UpdatePatientGraphs)
+        timer.start(50)
+
+
+        def ClearPatientGraphs():
+            global pgcustom1,pgcustom2
+            ReportsAnlysPage.pgcustom1.clear()
+            ReportsAnlysPage.pgcustom2.clear()
+
+
 
         InputVidFeed_Button = QPushButton("Browse...",ClinicalDiagPage)
         InputVidFeed_Button.move(700, 50)
@@ -446,10 +834,14 @@ try:
                                  "{"
                                  "background-color : #367A90;"
                                  "}")
+
         def GetVideoPathLocal():
+            global VideoFilepath
             VideoFilepath, checkFlag = QFileDialog.getOpenFileName(None, "Select input Video file",
                                     "", "All Files (*);;Avi(*.avi);;Webm (*.webm);;Mp4 (*.mp4);;mpeg (*.mpeg);;.WMV (* .wmv)")
-            if checkFlag: print(VideoFilepath)
+            if checkFlag: 
+                RESULT_DICT = GET_ALL_PARAMETERS(VideoFilepath)
+
         InputVidFeed_Button.pressed.connect(GetVideoPathLocal)
 
 
@@ -466,9 +858,6 @@ try:
         toolsMenu = mainMenu.addMenu('Tools')
         helpMenu = mainMenu.addMenu('Help')
 
-
-
-
         stackedLayout_MainApp.addWidget(LoginPage)
         stackedLayout_MainApp.addWidget(RegistrationPage)
         stackedLayout_MainApp.addWidget(LoggedInPage_Dr)
@@ -476,5 +865,5 @@ try:
 
         MainWindowGUI.showMaximized()
         sys.exit(Aplication.exec_())
-except Exception as error : print(error)
+
 
