@@ -1,5 +1,10 @@
-
-
+# -*- coding: utf-8 -*-
+#___________________________________________________
+SWName = "Postura"
+HandcraftedBy = "AI Volved Technologies(Pvt) Ltd."
+Version = "1.2"
+LastModifiedOn = "4th June 2022"
+#___________________________________________________
 import re
 import json,requests
 import pyqtgraph as pg
@@ -676,7 +681,9 @@ if 1:
                                        "{""background-color : #327A92;" "}"
                                        )
 
-        PatientRegButton.pressed.connect(lambda: Arbitrate_loggedInScreensDr(1))
+        #PatientRegButton.pressed.connect(lambda: Arbitrate_loggedInScreensDr(1))
+        PatientRegButton.pressed.connect(\
+            lambda: showUserInfo("The functionality is disabled by the developer as of ver" + Version))
 
         PatientRepAnlsButton = QPushButton("Reports analysis",Frm_H_Left_LoggedInPage_Dr)
         PatientRepAnlsButton.move(25, 190)
@@ -690,7 +697,9 @@ if 1:
                                            "{""background-color : #327A92;" "}"
                                            )
 
-        PatientRepAnlsButton.pressed.connect(lambda: Arbitrate_loggedInScreensDr(2))
+        #PatientRepAnlsButton.pressed.connect(lambda: Arbitrate_loggedInScreensDr(2))
+        PatientRepAnlsButton.pressed.connect(\
+            lambda: showUserInfo("The functionality is disabled by the developer as of ver" + Version))
 
         Frm_H_Right_LoggedInPage_Dr = QFrame(LoggedInPage_Dr)
         #Frm_H_Right_LoggedInPage_Dr.setFrameShape(QFrame.StyledPanel)
@@ -822,6 +831,23 @@ if 1:
                                              "QPushButton::focus" \
                                              "{""background-color : #327A92;" "}"
                                              )
+
+        PauseAnlse = QPushButton("Pause Analysis",ClinicalDiagPage)
+        PauseAnlse.move(1200, 50)
+        PauseAnlse.setFixedSize(155,44)
+        PauseAnlse.setFont(QFont("Segoe UI ", 10, ))
+        PauseAnlse.setStyleSheet("QPushButton \
+                                                {border: 1px blue;border-radius: 5px;  \
+                                                 background-color: #075691; color : white;}" \
+                                          "QPushButton::hover"
+                                          "{""background-color : #1e6bff;" "}"
+                                          "QPushButton::QPushButton:checked" \
+                                          "{"" border: none;" "}" \
+                                          "QPushButton::focus" \
+                                          "{""background-color : #327A92;" "}"
+                                          )
+        PauseAnlse.pressed.connect( lambda: showUserInfo("The functionality is disabled by the developer as of ver" + Version) )
+
 
 
         AbortAnlse = QPushButton("Abort Analysis",ClinicalDiagPage)
