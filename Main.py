@@ -434,7 +434,7 @@ if 1:
                     MainWindowGUI.setStyleSheet("QWidget#MainMenu{background-image: url(:/resources/Wallpaper6.jpg);}");
                 elif pageNum==2:
                     MainWindowGUI.setStyleSheet\
-                        ("QWidget#MainMenu{background-image: url(:/resources/Deep Sea Space.jpg);}");
+                        ("QWidget#MainMenu{background-image: url(:/resources/Wallpaper9.jpg);}");
 
                 stackedLayout_MainApp.setCurrentIndex(pageNum)
             except Exception as error : showUserInfo(error)
@@ -740,7 +740,7 @@ if 1:
         VideoFeedInputLabel = QLabel(ClinicalDiagPage)
         VideoFeedInputLabel.setText("Live Assessment")
         VideoFeedInputLabel.setFont(QFont("Segoe UI ", 12))
-        VideoFeedInputLabel.setStyleSheet(("color: white"))
+        VideoFeedInputLabel.setStyleSheet(("color: #075691"))
         VideoFeedInputLabel.move(390,58)
 
         VideoFeedInput = AnimatedToggle(ClinicalDiagPage,
@@ -889,6 +889,8 @@ if 1:
         DialogueBox.setFixedSize(300, 170)
         DialogueBox.setStyleSheet("background-color: 	white" "")
         DialogueBox.setWindowTitle("Patient Vital inputs")
+        DialogueBox.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+
         formGroupBox = QGroupBox("Body Parameters")
         layout = QFormLayout()
         PNAME = QLineEdit()
