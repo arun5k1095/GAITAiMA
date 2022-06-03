@@ -1,7 +1,8 @@
-from multiprocessing import Queue
-from threading import*
+
+
 import re
 import json,requests
+import pyqtgraph as pg
 from PIL import Image, ImageQt
 import urllib.request
 from PyQt5.QtGui import QPixmap,QFont
@@ -14,12 +15,7 @@ from PyQt5 import QtGui
 from PyQt5.QtGui import QImage, QPixmap
 from qtwidgets import PasswordEdit , AnimatedToggle
 from FaultCodes import FaultCodes
-import os
 import sys
-import time
-
-import requests
-import urllib.request
 import time
 import webbrowser
 from datetime import datetime
@@ -425,7 +421,7 @@ if 1:
         MainWindowGUI.setWindowIcon(QtGui.QIcon(IconFilepath))
         splash = QSplashScreen(QPixmap(':/resources/Splashscreen.jpg'))
         splash.show()
-        splash.showMessage('<h1 style="color:white; font-size: 1px;font-family: "Times New Roman", Times, serif;">Loading ..</h1>',
+        splash.showMessage('<h1 style="color:white;">Loading ..',
                            Qt.AlignBottom | Qt.AlignRight)
         time.sleep(3)
         QTimer.singleShot(0, splash.close)
@@ -473,7 +469,7 @@ if 1:
         SingInButton.setFont(QFont("Segoe UI ", 10, ))
         SingInButton.setStyleSheet("QPushButton {border: 1px blue;border-radius: 5px;  background-color: #075691; color : white;}""QPushButton::hover"
                                  "{"
-                                 "background-color : #1a85b4;"
+                                 "background-color : #1e6bff;"
                                  "}")
 
         SingInButton.pressed.connect(Authenticate_Login)
@@ -484,7 +480,7 @@ if 1:
         ButtonSignINRegisterUser.setFont(QFont("Segoe UI ", 10, ))
         ButtonSignINRegisterUser.setStyleSheet("QPushButton {border: 1px blue;border-radius: 5px;  background-color: #075691;color : white;}""QPushButton::hover"
                                  "{"
-                                 "background-color : #1a85b4;"
+                                 "background-color : #1e6bff;"
                                  "}")
         ButtonSignINRegisterUser.pressed.connect(lambda : Switch_Screenpage(1))
 
@@ -593,7 +589,7 @@ if 1:
         ButtonRegisterUser.setStyleSheet(
             "QPushButton {border: 1px blue;border-radius: 5px;  background-color: #075691;color : white;}""QPushButton::hover"
             "{"
-            "background-color : #1a85b4;"
+            "background-color : #1e6bff;"
             "}")
 
         error_dialog = QErrorMessage(MainWindowGUI)
@@ -635,7 +631,7 @@ if 1:
         ButtonRegisterUserCancel.setStyleSheet(
             "QPushButton {border: 1px blue;border-radius: 5px;  background-color: #075691;color : white;}""QPushButton::hover"
             "{"
-            "background-color : #1a85b4;"
+            "background-color : #1e6bff;"
             "}"\
             )
         ButtonRegisterUserCancel.pressed.connect(lambda: Switch_Screenpage(0))
@@ -657,7 +653,7 @@ if 1:
                                                 {border: 1px blue;border-radius: 5px;  \
                                                  background-color: #075691; color : white;}"\
                                              "QPushButton::hover"
-                                                "{""background-color : #1a85b4;" "}"
+                                                "{""background-color : #1e6bff;" "}"
                                              "QPushButton::QPushButton:checked"\
                                              "{"" border: none;" "}" \
                                              "QPushButton::focus" \
@@ -674,7 +670,7 @@ if 1:
         PatientRegButton.setFont(QFont("Segoe UI ", 10, ))
         PatientRegButton.setStyleSheet("QPushButton {border: 1px blue;border-radius: 5px;  background-color: #075691; color : white;}""QPushButton::hover"
                                  "{"
-                                 "background-color : #1a85b4;"
+                                 "background-color : #1e6bff;"
                                  "}" \
                                        "QPushButton::focus" \
                                        "{""background-color : #327A92;" "}"
@@ -688,7 +684,7 @@ if 1:
         PatientRepAnlsButton.setFont(QFont("Segoe UI ", 10, ))
         PatientRepAnlsButton.setStyleSheet("QPushButton {border: 1px blue;border-radius: 5px;  background-color: #075691; color : white;}""QPushButton::hover"
                                  "{"
-                                 "background-color : #1a85b4;"
+                                 "background-color : #1e6bff;"
                                  "}" \
                                            "QPushButton::focus" \
                                            "{""background-color : #327A92;" "}"
@@ -697,9 +693,9 @@ if 1:
         PatientRepAnlsButton.pressed.connect(lambda: Arbitrate_loggedInScreensDr(2))
 
         Frm_H_Right_LoggedInPage_Dr = QFrame(LoggedInPage_Dr)
-        Frm_H_Right_LoggedInPage_Dr.setFrameShape(QFrame.StyledPanel)
-        Frm_H_Left_LoggedInPage_Dr.setStyleSheet("#MainFrame { border: 5px solid black; }")
-        Frm_H_Right_LoggedInPage_Dr.setStyleSheet("#MainFrame { border: 5px solid black; }")
+        #Frm_H_Right_LoggedInPage_Dr.setFrameShape(QFrame.StyledPanel)
+        #Frm_H_Left_LoggedInPage_Dr.setStyleSheet("#MainFrame { border: 5px solid black; }")
+        #Frm_H_Right_LoggedInPage_Dr.setStyleSheet("#MainFrame { border: 5px solid black; }")
         #Frm_H_Right_LoggedInPage_Dr.setFixedSize(100,500)
 
         grid_layout = QGridLayout(LoggedInPage_Dr)
@@ -711,24 +707,9 @@ if 1:
 
         stackedLayout_Frm_H_Right_LoggedInPage_Dr = QStackedLayout(Frm_H_Right_LoggedInPage_Dr)
 
-        import pyqtgraph as pg
-
-
-
         ClinicalDiagPage = QFrame()
         PatientRegPage = QFrame()
         ReportsAnlysPage = QFrame()
-
-
-
-
-        #ReportsAnlysPage = pg.PlotWidget(ReportsAnlysPage)
-        #my_layout.addWidget(my_plot)
-        #ReportsAnlysPage.plot([5, 7,6,7,8],[5, 5,8,2,8])
-
-        import pyqtgraph as pg
-        import numpy as np
-
 
         x = []
         y=  []
@@ -746,14 +727,21 @@ if 1:
 
 
         VideoFeedFrame =  QLabel(ClinicalDiagPage)
-        VideoFeedFrame.setFixedSize(640, 480)
-        VideoFeedFrame.move(80,50)
+        VideoFeedFrame.setFixedSize(700, 400)
+        VideoFeedFrame.move(90,130)
+        VideoFeedFrame.setFont(QFont("Segoe UI ", 10, ))
+        VideoFeedFrame.setStyleSheet("background-color: black;color: red;padding :10px")
+        VideoFeedFrame.setText("Input video feed Unavailable ..")
+        VideoFeedFrame.setAlignment(Qt.AlignCenter)
+        VideoFeedFrame.setFrameStyle(QFrame.StyledPanel);
+        VideoFeedFrame.setLineWidth(4);
+
         #VideoFeedFrame.setFont(QFont('Times', 25))
         VideoFeedInputLabel = QLabel(ClinicalDiagPage)
         VideoFeedInputLabel.setText("Live Assessment")
         VideoFeedInputLabel.setFont(QFont("Segoe UI ", 12))
         VideoFeedInputLabel.setStyleSheet(("color: white"))
-        VideoFeedInputLabel.move(390,60)
+        VideoFeedInputLabel.move(390,58)
 
         VideoFeedInput = AnimatedToggle(ClinicalDiagPage,
             checked_color="green",
@@ -764,7 +752,7 @@ if 1:
         container = QWidget()
 
         GraphsFrame = QFrame(ClinicalDiagPage)
-        GraphsFrame.setFixedSize(1500,300)
+        GraphsFrame.setFixedSize(1500,350)
         GraphsFrame.move(80,600)
         layout = QHBoxLayout(GraphsFrame) # create the layout
 
@@ -811,26 +799,33 @@ if 1:
             AbortAnalsysisFlag = True
 
         AnalysisDisiplay = QLabel(ClinicalDiagPage)
-        AnalysisDisiplay.move(900, 85)
-        AnalysisDisiplay.setFixedSize(700, 400)
+        AnalysisDisiplay.move(830, 130)
+        AnalysisDisiplay.setFixedSize(730, 400)
         AnalysisDisiplay.setFont(QFont("Segoe UI ", 10,))
-        #AnalysisDisiplay.setText("Arun")
-        #AnalysisDisiplay.setStyleSheet("background-color: 	white" "")
+        AnalysisDisiplay.setWordWrap(True)
+        AnalysisDisiplay.setStyleSheet("background-color: black;color: green;padding :15px")
+        AnalysisDisiplay.setText("Patient analysis unavailable.")
+        AnalysisDisiplay.setFrameStyle(QFrame.StyledPanel);
+        AnalysisDisiplay.setLineWidth(4);
 
         InputVidFeed_Button = QPushButton("Feed Input",ClinicalDiagPage)
-        InputVidFeed_Button.move(80, 50)
+        InputVidFeed_Button.move(90, 50)
         InputVidFeed_Button.setFixedSize(155,44)
         InputVidFeed_Button.setFont(QFont("Segoe UI ", 10, ))
-        InputVidFeed_Button.setStyleSheet("QPushButton {border: 1px blue;border-radius: 5px;  \
-        background-color: #206075; color : white;}""QPushButton::hover"
-                                 "{"
-                                 "background-color : #367A90;"
-                                 "}")
-
+        InputVidFeed_Button.setStyleSheet("QPushButton \
+                                                {border: 1px blue;border-radius: 5px;  \
+                                                 background-color: #075691; color : white;}"\
+                                             "QPushButton::hover"
+                                                "{""background-color : #1e6bff;" "}"
+                                             "QPushButton::QPushButton:checked"\
+                                             "{"" border: none;" "}" \
+                                             "QPushButton::focus" \
+                                             "{""background-color : #327A92;" "}"
+                                             )
 
 
         AbortAnlse = QPushButton("Abort Analysis",ClinicalDiagPage)
-        AbortAnlse.move(600, 50)
+        AbortAnlse.move(1400, 50)
         AbortAnlse.setFixedSize(155,44)
         AbortAnlse.setFont(QFont("Segoe UI ", 10, ))
         AbortAnlse.setStyleSheet("QPushButton {border: 1px blue;border-radius: 5px;  \
