@@ -7,11 +7,12 @@ import urllib.request
 from PyQt5.QtGui import QPixmap,QFont
 from PyQt5.QtWidgets import QApplication,QWidget,QSplashScreen,\
     QStackedLayout,QFrame,QFormLayout,QLineEdit,QPushButton,QLabel,QComboBox,QDateEdit,QMessageBox,QErrorMessage,\
-    QMainWindow,QMenuBar,QGridLayout,QFileDialog,QVBoxLayout,QHBoxLayout
+    QMainWindow,QMenuBar,QGridLayout,QFileDialog,QVBoxLayout,QHBoxLayout,QTableWidget , QDialog , QGroupBox ,\
+    QDialogButtonBox
 from PyQt5.QtCore import Qt,QTimer
 from PyQt5 import QtGui
 from PyQt5.QtGui import QImage, QPixmap
-from qtwidgets import PasswordEdit
+from qtwidgets import PasswordEdit , AnimatedToggle
 from FaultCodes import FaultCodes
 import os
 import sys
@@ -26,9 +27,7 @@ import Resources
 
 import cv2
 import mediapipe as mp
-import numpy as np
-import matplotlib.pyplot as plt
-import pprint
+
 
 
 PARAMETERS_DICT = {
@@ -48,14 +47,17 @@ PARAMETERS_DICT = {
     'Rstride_duration': [],
     'Lstride_length': [],
     'Rstride_length':[]
-
 }
 
+PERSON_NAME= "Test_Subject"
+PERSON_HEIGHT = float(160)
+PERSON_WEIGHT = float(65)
 
 
+AbortAnalsysisFlag = False
 def GET_ALL_PARAMETERS(VideoFilepath):
 
-    global PARAMETERS_DICT , VideoFeedFrame
+    global PARAMETERS_DICT , VideoFeedFrame , PERSON_HEIGHT  ,PERSON_WEIGHT
     PARAMETERS_DICT["Step_length"] = [0]
     PARAMETERS_DICT["R_Velocity"] = [0]
     ClearPatientGraphs()
@@ -65,14 +67,12 @@ def GET_ALL_PARAMETERS(VideoFilepath):
     pose = mpPose.Pose(enable_segmentation=True,model_complexity=2)
     cap = cv2.VideoCapture(VideoFilepath)
 
-    filename = VideoFilepath.split('/')[-1]
+    #filename = VideoFilepath.split('/')[-1]
 
     # 185cms is the person height, 10cms is the height from eye to tip of head 
-    PERSON_HEIGHT = float(160)
+
     PERSON_HEIGHT-=10
 
-    print('Working on : '+filename)
-    print()
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = cap.get(cv2.CAP_PROP_FPS)
     duration = frame_count/fps
@@ -140,11 +140,10 @@ def GET_ALL_PARAMETERS(VideoFilepath):
             height_eyetofoot = abs(rightheel.y-right_eye_outer.y)*h
             init_pos_left_ankle = int(leftheel)
             init_pos_right_ankle = int(rightheel.x*w)
-
             break
 
 
-    while True:
+    while not(AbortAnalsysisFlag):
         success, img = cap.read()
         frame_number+=1
         if not success:
@@ -168,6 +167,11 @@ def GET_ALL_PARAMETERS(VideoFilepath):
             convertToQtFormat = QImage(imgRGB.data, w, h, bytesPerLine, QImage.Format_RGB888)
             p = convertToQtFormat.scaled(640, 480, Qt.KeepAspectRatio)
             VideoFeedFrame.setPixmap(QtGui.QPixmap.fromImage(p))
+
+            Text = ""
+            for key in PARAMETERS_DICT.keys():
+                Text += str(key)+" : "+ str(PARAMETERS_DICT[key])+"\n"
+            AnalysisDisiplay.setText(Text)
             UpdatePatientGraphs()
             VideoFeedFrame.update()
 
@@ -212,10 +216,7 @@ def GET_ALL_PARAMETERS(VideoFilepath):
                 LCOUNT+=1
             
                 LSTRIDE_DURATION = round((frame_number-initial_left_frame)*cnt,2)
-                print('LSTRIDE_DURATION : '+str(LSTRIDE_DURATION)+'s',end=" && ")
-                
                 LSTEP_DURATION = round((frame_number-prev_step_frame)*cnt,2)
-                print('LSTEP_DURATION : '+str(LSTEP_DURATION)+'s')
                 
                 PARAMETERS_DICT['Lstep_duration'].append(LSTEP_DURATION)
                 PARAMETERS_DICT['Lstride_duration'].append(LSTRIDE_DURATION)
@@ -239,18 +240,13 @@ def GET_ALL_PARAMETERS(VideoFilepath):
                     STEP_LENGTH_ARRAY.append(step_length_incms)
                     PARAMETERS_DICT['Step_length']=STEP_LENGTH_ARRAY
 
-                # print(L_stride_length_incms)
             left_previous=leftheel  
 
             if RDIFF==0 and frame_number-initial_right_frame>10 and rightheel-right_prev_step>20:
                 RCOUNT+=1
             
                 RSTRIDE_DURATION = round((frame_number-initial_right_frame)*cnt,2)
-                print('RSTRIDE_DURATION : '+str(RSTRIDE_DURATION)+'s',end=" && ")
-
                 RSTEP_DURATION = round((frame_number-prev_step_frame)*cnt,2)
-                print('RSTEP_DURATION : '+str(RSTEP_DURATION)+'s')
-                
                 PARAMETERS_DICT['Rstride_duration'].append(RSTRIDE_DURATION)
                 PARAMETERS_DICT['Rstep_duration' ].append(RSTEP_DURATION)
 
@@ -271,7 +267,6 @@ def GET_ALL_PARAMETERS(VideoFilepath):
                     STEP_LENGTH_ARRAY.append(step_length_incms)
                     PARAMETERS_DICT['Step_length']=STEP_LENGTH_ARRAY
 
-                # print(R_stride_length_incms)
             right_previous=rightheel
 
             step_count=LCOUNT+RCOUNT
@@ -309,27 +304,7 @@ def GET_ALL_PARAMETERS(VideoFilepath):
     R_AVERAGE_STRIDE_LENGTH = round(sum(R_ANS_ARRAY)/len(R_ANS_ARRAY),2)
     AVERAGE_STEP_LENGTH = round(sum(STEP_LENGTH_ARRAY)/len(STEP_LENGTH_ARRAY),2)
 
-    print('Duration : '+str(duration))
-    # print('step_count : '+str(step_count))
-    # print('cadence : '+str(cadence))
-    print('L_AVERAGE_STRIDE_LENGTH : '+str(L_AVERAGE_STRIDE_LENGTH))
-    print('R_AVERAGE_STRIDE_LENGTH : '+str(R_AVERAGE_STRIDE_LENGTH))
-    print('AVERAGE_STEP_LENGTH : '+str(AVERAGE_STEP_LENGTH))
-    # print('Left Velocity : '+str(left_velocity)+'m/s')
-    # print('Right Velocity : '+str(right_velocity)+'m/s')
-    # print('Swing : '+str(SWING) +' s')
-    # print('SST Right : '+str(SSTRIGHT))
-    # print('SST Left : '+str(SSTLEFT))
-    # print('DST : '+str(DST))
-    # print('STANCE : '+str(STANCE))
-
-
-
-    pprint.pprint(PARAMETERS_DICT)
-
-
     cap.release()
-    # result.release()
     cv2.destroyAllWindows()
     return PARAMETERS_DICT
 
@@ -434,8 +409,7 @@ if 1:
             UserID = UserIDInput.text().upper().strip()
             UserPswd = UserPassword.text().strip()
 
-            #if UserID == "ADMIN" and UserPswd == "admin123":
-            if 1:
+            if UserID == "ADMIN" and UserPswd == "admin":
                 Switch_Screenpage(2)
             else : error_dialog.showMessage("Invalid Credentials , Please re-try")
 
@@ -467,7 +441,7 @@ if 1:
                         ("QWidget#MainMenu{background-image: url(:/resources/Deep Sea Space.jpg);}");
 
                 stackedLayout_MainApp.setCurrentIndex(pageNum)
-            except Exception as error : print(error)
+            except Exception as error : showUserInfo(error)
 
         stackedLayout_MainApp = QStackedLayout(MainWindowGUI)
 
@@ -635,7 +609,7 @@ if 1:
                     "UserDoB": str(UserDoB.text()).strip().upper(),
                     "UserPswd": str(UserPswd.text()).strip().upper(),
                 }
-                print(UserData)
+                #print(UserData)
 
 
                 try:
@@ -649,7 +623,7 @@ if 1:
                     except : error_dialog.showMessage(str(Acknowledgment))
 
 
-            except Exception as error : print(error)
+            except Exception as error : showUserInfo(error)
 
 
         ButtonRegisterUser.pressed.connect(Call_UserRegistration)
@@ -774,14 +748,25 @@ if 1:
         VideoFeedFrame =  QLabel(ClinicalDiagPage)
         VideoFeedFrame.setFixedSize(640, 480)
         VideoFeedFrame.move(80,50)
+        #VideoFeedFrame.setFont(QFont('Times', 25))
+        VideoFeedInputLabel = QLabel(ClinicalDiagPage)
+        VideoFeedInputLabel.setText("Live Assessment")
+        VideoFeedInputLabel.setFont(QFont("Segoe UI ", 12))
+        VideoFeedInputLabel.setStyleSheet(("color: white"))
+        VideoFeedInputLabel.move(390,60)
 
+        VideoFeedInput = AnimatedToggle(ClinicalDiagPage,
+            checked_color="green",
+            pulse_checked_color="white"
+        )
+        VideoFeedInput.setFixedSize(70,50)
+        VideoFeedInput.move(320,50)
+        container = QWidget()
 
         GraphsFrame = QFrame(ClinicalDiagPage)
         GraphsFrame.setFixedSize(1500,300)
         GraphsFrame.move(80,600)
         layout = QHBoxLayout(GraphsFrame) # create the layout
-
-
 
         ReportsAnlysPage.pgcustom1 = CustomPlot("Number of Steps","Step Length") # class abstract both the classes
         ReportsAnlysPage.pgcustom2 = CustomPlot("","") # "" "" ""
@@ -806,12 +791,9 @@ if 1:
             ReportsAnlysPage.pgcustom1.plot(range(1,len(PARAMETERS_DICT['Step_length'])+1),\
                                                     PARAMETERS_DICT["Step_length"],\
                                             pen='dodgerblue', symbol='t', symbolPen='g', symbolSize=1)
-            print(PARAMETERS_DICT['R_Velocity'])
             ReportsAnlysPage.pgcustom2.plot(range(1,len(PARAMETERS_DICT['R_Velocity'])+1),\
                                             PARAMETERS_DICT['R_Velocity'], \
                                             pen='dodgerblue', symbol='t', symbolPen='g', symbolSize=1)
-            #ReportsAnlysPage.pgcustom3.plot(x,y, pen='dodgerblue', symbol='t', symbolPen='g', symbolSize=1)
-            #ReportsAnlysPage.pgcustom4.plot(x,y, pen='dodgerblue', symbol='t', symbolPen='g', symbolSize=1)
 
         timer = pg.QtCore.QTimer()
         #timer.timeout.connect(UpdatePatientGraphs)
@@ -824,10 +806,20 @@ if 1:
             ReportsAnlysPage.pgcustom2.clear()
 
 
+        def Abort_Feed_Analysis():
+            global AbortAnalsysisFlag
+            AbortAnalsysisFlag = True
 
-        InputVidFeed_Button = QPushButton("Browse...",ClinicalDiagPage)
-        InputVidFeed_Button.move(700, 50)
-        InputVidFeed_Button.setFixedSize(150,45)
+        AnalysisDisiplay = QLabel(ClinicalDiagPage)
+        AnalysisDisiplay.move(900, 85)
+        AnalysisDisiplay.setFixedSize(700, 400)
+        AnalysisDisiplay.setFont(QFont("Segoe UI ", 10,))
+        #AnalysisDisiplay.setText("Arun")
+        #AnalysisDisiplay.setStyleSheet("background-color: 	white" "")
+
+        InputVidFeed_Button = QPushButton("Feed Input",ClinicalDiagPage)
+        InputVidFeed_Button.move(80, 50)
+        InputVidFeed_Button.setFixedSize(155,44)
         InputVidFeed_Button.setFont(QFont("Segoe UI ", 10, ))
         InputVidFeed_Button.setStyleSheet("QPushButton {border: 1px blue;border-radius: 5px;  \
         background-color: #206075; color : white;}""QPushButton::hover"
@@ -835,14 +827,95 @@ if 1:
                                  "background-color : #367A90;"
                                  "}")
 
+
+
+        AbortAnlse = QPushButton("Abort Analysis",ClinicalDiagPage)
+        AbortAnlse.move(600, 50)
+        AbortAnlse.setFixedSize(155,44)
+        AbortAnlse.setFont(QFont("Segoe UI ", 10, ))
+        AbortAnlse.setStyleSheet("QPushButton {border: 1px blue;border-radius: 5px;  \
+        background-color: #FF2E2E; color : white;}""QPushButton::hover"
+                                 "{"
+                                 "background-color : #D10000;"
+                                 "}")
+        AbortAnlse.pressed.connect(Abort_Feed_Analysis )
+
+
         def GetVideoPathLocal():
-            global VideoFilepath
-            VideoFilepath, checkFlag = QFileDialog.getOpenFileName(None, "Select input Video file",
-                                    "", "All Files (*);;Avi(*.avi);;Webm (*.webm);;Mp4 (*.mp4);;mpeg (*.mpeg);;.WMV (* .wmv)")
-            if checkFlag: 
-                RESULT_DICT = GET_ALL_PARAMETERS(VideoFilepath)
+            global VideoFilepath , AbortAnalsysisFlag
+
+            AbortAnalsysisFlag = False
+
+            if VideoFeedInput.checkState() != 0:
+                #showUserInfo("Live Feed implimentation is pending")
+
+                if SaveBodyParameters() != 1 : return
+                RESULT_DICT = GET_ALL_PARAMETERS(0)
+            else:
+                VideoFilepath, checkFlag = QFileDialog.getOpenFileName(None, "Select input Video file",
+                                        "", "All Files (*);;Avi(*.avi);;Webm (*.webm);;Mp4 (*.mp4);;mpeg (*.mpeg);;.WMV (* .wmv)")
+                if checkFlag:
+                    RESULT_DICT = GET_ALL_PARAMETERS(VideoFilepath)
 
         InputVidFeed_Button.pressed.connect(GetVideoPathLocal)
+
+        AnalysisToProcedd = 1
+        def SaveBodyParameters_Rescue() :
+            global AnalysisToProcedd
+            DialogueBox.close()
+            ret = QMessageBox.question(MainWindowGUI, 'Process feed',\
+                                       "Patient parameters were not saved/ provided , \
+                                       Do you want to proceed with default parameters ?",
+                                       QMessageBox.Yes | QMessageBox.No )
+
+            if ret == QMessageBox.Yes:
+
+                AnalysisToProcedd = 1
+            else :
+                AnalysisToProcedd = 0
+
+
+        def SaveBodyParameters():
+            global PERSON_HEIGHT , PERSON_WEIGHT , PERSON_NAME
+
+            DialogueBox.exec_()
+            if AnalysisToProcedd :pass
+            else: return 0
+            PERSON_NAME = PNAME.text().strip()
+            PERSON_WEIGHT = PWEIGHT.text().strip()
+            PERSON_WEIGHT = float(PERSON_WEIGHT)
+            PERSON_HEIGHT = PHEIGHT.text().strip()
+            PERSON_HEIGHT = float(PERSON_HEIGHT)
+            DialogueBox.close()
+            return 1
+
+
+        DialogueBox = QDialog(MainWindowGUI)
+        DialogueBox.setFixedSize(300, 170)
+        DialogueBox.setStyleSheet("background-color: 	white" "")
+        DialogueBox.setWindowTitle("Patient Vital inputs")
+        formGroupBox = QGroupBox("Body Parameters")
+        layout = QFormLayout()
+        PNAME = QLineEdit()
+        PNAME.setText("Test Subject")
+        PHEIGHT = QLineEdit()
+        PHEIGHT.setText("171")
+        PWEIGHT = QLineEdit()
+        PWEIGHT.setText("65")
+        layout.addRow(QLabel("Patient Name"), PNAME)
+        layout.addRow(QLabel("Patient Weight"), PWEIGHT)
+        layout.addRow(QLabel("Patient Height"), PHEIGHT)
+        formGroupBox.setLayout(layout)
+
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        buttonBox.accepted.connect(SaveBodyParameters)
+        buttonBox.rejected.connect(SaveBodyParameters_Rescue)
+
+
+        mainLayout = QVBoxLayout()
+        mainLayout.addWidget(formGroupBox)
+        mainLayout.addWidget(buttonBox)
+        DialogueBox.setLayout(mainLayout)
 
 
         stackedLayout_Frm_H_Right_LoggedInPage_Dr.addWidget(ClinicalDiagPage)
