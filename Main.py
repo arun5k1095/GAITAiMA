@@ -2,9 +2,10 @@
 #___________________________________________________
 SWName = "Postura"
 HandcraftedBy = "AI Volved Technologies(Pvt) Ltd."
-Version = "1.2"
-LastModifiedOn = "4th June 2022"
+Version = "1.3"
+LastModifiedOn = "6th June 2022"
 #___________________________________________________
+
 import re
 import json,requests
 import pyqtgraph as pg
@@ -49,6 +50,33 @@ PARAMETERS_DICT = {
     'Lstride_length': [],
     'Rstride_length':[]
 }
+
+
+def reset_parameters_dict():
+
+
+    global PARAMETERS_DICT
+    PARAMETERS_DICT = {
+
+    'Step_length' : [0] ,
+    'SST_Right' : 0,
+    'SST_Left' : 0,
+    'DST' : 0,
+    'STANCE' : 0,
+    'SWING': 0,
+    'L_Velocity' : [0],
+    'R_Velocity' : [0],
+    'CADENCE': 0,
+    'Lstep_duration':[] ,
+    'Rstep_duration' :[] ,
+    'Lstride_duration':[] ,
+    'Rstride_duration': [],
+    'Lstride_length': [],
+    'Rstride_length':[]
+    }
+
+    return PARAMETERS_DICT
+
 
 PERSON_NAME= "Test_Subject"
 PERSON_HEIGHT = float(160)
@@ -166,7 +194,7 @@ def GET_ALL_PARAMETERS(VideoFilepath):
             bytesPerLine = c * w
             mpDraw.draw_landmarks(imgRGB, results.pose_landmarks, mpPose.POSE_CONNECTIONS)
             convertToQtFormat = QImage(imgRGB.data, w, h, bytesPerLine, QImage.Format_RGB888)
-            p = convertToQtFormat.scaled(640, 480, Qt.KeepAspectRatio)
+            p = convertToQtFormat.scaled(720, 420, Qt.KeepAspectRatio)
             VideoFeedFrame.setPixmap(QtGui.QPixmap.fromImage(p))
 
             Text = ""
@@ -431,7 +459,7 @@ if 1:
         time.sleep(3)
         QTimer.singleShot(0, splash.close)
 
-        def Switch_Screenpage(pageNum):
+        def Switch_Screenpage(pageNum):  #"1"  ,"One"
             try:
                 if pageNum ==1:
                     MainWindowGUI.setStyleSheet("QWidget#MainMenu{background-image: url(:/resources/Wallpaper8.jpg);}");
@@ -739,7 +767,7 @@ if 1:
         VideoFeedFrame.setFixedSize(700, 400)
         VideoFeedFrame.move(90,130)
         VideoFeedFrame.setFont(QFont("Segoe UI ", 10, ))
-        VideoFeedFrame.setStyleSheet("background-color: black;color: red;padding :10px")
+        VideoFeedFrame.setStyleSheet("background-color: black;color: red;padding :5px;margin:0 0 0 0")
         VideoFeedFrame.setText("Input video feed Unavailable ..")
         VideoFeedFrame.setAlignment(Qt.AlignCenter)
         VideoFeedFrame.setFrameStyle(QFrame.StyledPanel);
@@ -801,11 +829,14 @@ if 1:
             global pgcustom1,pgcustom2
             ReportsAnlysPage.pgcustom1.clear()
             ReportsAnlysPage.pgcustom2.clear()
+            reset_parameters_dict()
 
 
         def Abort_Feed_Analysis():
             global AbortAnalsysisFlag
             AbortAnalsysisFlag = True
+            reset_parameters_dict()
+
 
         AnalysisDisiplay = QLabel(ClinicalDiagPage)
         AnalysisDisiplay.move(830, 130)
