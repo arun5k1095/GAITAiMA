@@ -2,7 +2,7 @@
 #___________________________________________________
 SWName = "Postura"
 HandcraftedBy = "AI Volved Technologies(Pvt) Ltd."
-Version = "1.3"
+Version = "1.2"
 LastModifiedOn = "6th June 2022"
 #___________________________________________________
 
